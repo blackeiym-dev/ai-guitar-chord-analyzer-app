@@ -4,7 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>AI Guitar Chord Analyzer</title>
-<script src="https://unpkg.com/tone@14.8.49/build/Tone.js"></script>
+<script>
+window.__toneLoaded=false;
+window.__toneReady=()=>{
+  window.__toneLoaded=true;
+  if(window.__applyToneSelection) window.__applyToneSelection();
+};
+window.__loadToneFallback=()=>{
+  if(document.getElementById('toneFallback')) return;
+  const fallback=document.createElement('script');
+  fallback.id='toneFallback';
+  fallback.src='https://unpkg.com/tone@14.8.49/build/Tone.js';
+  fallback.onload=window.__toneReady;
+  document.head.appendChild(fallback);
+};
+</script>
+<script defer src="https://cdn.jsdelivr.net/npm/tone@14.8.49/build/Tone.js" onload="window.__toneReady()" onerror="window.__loadToneFallback()"></script>
 <style>
 :root{
  --bg:#edf6ff;--panel:#fff;--ink:#102840;--muted:#617990;--border:#bfd3e5;
@@ -194,6 +209,7 @@ const state={
  mediaSource:null,
  dryGain:null,
  pitchNode:null,
+ pitchGain:null,
  pitchReady:false,
  follow:true,
  currentBar:1,
@@ -259,7 +275,8 @@ function resetForNewFile(){
  if(state.pitchReady){
    try{
      state.dryGain.gain.setValueAtTime(1,state.audioCtx.currentTime);
-     state.pitchNode.wet.value=0;
+     if(state.pitchGain) state.pitchGain.gain.value=0;
+     state.pitchNode.wet.value=1;
      state.pitchNode.pitch=0;
    }catch(_){}
  }
@@ -276,21 +293,27 @@ async function ensureAudioGraph(){
  try{
    await Tone.start();
    const raw=Tone.getContext().rawContext;
+   if(raw.state==='suspended') await raw.resume();
+
    state.audioCtx=raw;
    state.mediaSource=raw.createMediaElementSource(audio);
 
+   // 原音経路
    state.dryGain=raw.createGain();
    state.dryGain.gain.value=1;
    state.mediaSource.connect(state.dryGain);
    state.dryGain.connect(raw.destination);
 
+   // 移調経路。native AudioNodeからToneへはTone.connectを使用する。
    state.pitchNode=new Tone.PitchShift({
      pitch:0,
      windowSize:0.08,
      delayTime:0
-   }).toDestination();
+   });
    state.pitchNode.wet.value=1;
-   state.mediaSource.connect(state.pitchNode.input);
+   state.pitchGain=new Tone.Gain(0).toDestination();
+   state.pitchNode.connect(state.pitchGain);
+   Tone.connect(state.mediaSource,state.pitchNode);
 
    state.pitchReady=true;
    return true;
@@ -306,21 +329,27 @@ async function setPitchMode(){
 
  if(ok){
    try{
+     const now=state.audioCtx.currentTime;
+     state.pitchNode.pitch=pitch;
      if(pitch===0){
-       state.dryGain.gain.setTargetAtTime(1,state.audioCtx.currentTime,0.01);
-       state.pitchNode.wet.value=0;
-       state.pitchNode.pitch=0;
+       state.dryGain.gain.cancelScheduledValues(now);
+       state.dryGain.gain.setTargetAtTime(1,now,0.01);
+       state.pitchGain.gain.rampTo(0,0.02);
      }else{
-       state.dryGain.gain.setTargetAtTime(0,state.audioCtx.currentTime,0.01);
-       state.pitchNode.wet.value=1;
-       state.pitchNode.pitch=pitch;
+       state.dryGain.gain.cancelScheduledValues(now);
+       state.dryGain.gain.setTargetAtTime(0,now,0.01);
+       state.pitchGain.gain.rampTo(1,0.02);
      }
+     $('analysisStatus').textContent=pitch===0
+       ? '原曲キーで再生します。'
+       : `キーを${pitch>0?'＋':''}${pitch}半音に変更しました。`;
    }catch(e){
      console.warn(e);
+     $('analysisStatus').textContent='キー変更処理でエラーが発生しました。音源を選び直してください。';
    }
- }else if(pitch!==0){
-   $('pitch').value=0;
-   $('analysisStatus').textContent='この端末ではキー変更を初期化できません。再生とコード解析は利用できます。';
+ }else{
+   // 値を0へ戻さない。CDN読み込み完了後に再度適用できるよう保持する。
+   $('analysisStatus').textContent='キー変更機能を読み込んでいます。数秒後にもう一度選択してください。';
  }
  updateKeys();
  renderChart();
@@ -426,6 +455,8 @@ $('back01').onclick=()=>{audio.currentTime=Math.max(0,audio.currentTime-.1);sync
 $('fwd01').onclick=()=>{audio.currentTime=Math.min(audio.duration||0,audio.currentTime+.1);syncFromAudio(true)};
 $('speed').onchange=()=>{audio.playbackRate=+$('speed').value;audio.preservesPitch=true;audio.webkitPreservesPitch=true};
 $('pitch').onchange=()=>setPitchMode();
+window.__applyToneSelection=()=>{if((+$('pitch').value||0)!==0)setPitchMode();};
+if(window.__toneLoaded)window.__applyToneSelection();
 $('followToggle').onclick=()=>{state.follow=!state.follow;$('followToggle').textContent=state.follow?'自動追従ON':'自動追従OFF';$('followToggle').classList.toggle('active',state.follow);if(state.follow){followCurrent();renderChart()}};
 $('prevWindow').onclick=()=>{state.windowStart=Math.max(1,state.windowStart-12);renderChart()};
 $('nextWindow').onclick=()=>{state.windowStart=Math.min(Math.max(1,state.chords.length-11),state.windowStart+12);renderChart()};
@@ -449,17 +480,51 @@ function chromaSegment(data,sr,start,end){
 function corr(a,b){const am=a.reduce((x,y)=>x+y,0)/a.length,bm=b.reduce((x,y)=>x+y,0)/b.length;let n=0,da=0,db=0;for(let i=0;i<a.length;i++){const x=a[i]-am,y=b[i]-bm;n+=x*y;da+=x*x;db+=y*y}return n/Math.sqrt((da||1)*(db||1))}
 function rotate(a,n){return a.map((_,i)=>a[(i-n+120)%12])}
 function estimateKey(global){let best={score:-9,name:''};for(let r=0;r<12;r++)for(const [p,s] of [[MAJOR,''],[MINOR,'m']]){const sc=corr(global,rotate(p,r));if(sc>best.score)best={score:sc,name:NOTES[r]+s}}return best}
+function chordTemplateScore(c,r,tones){
+ const inside=tones.reduce((s,x)=>s+c[(r+x)%12],0);
+ const toneSet=new Set(tones.map(x=>(r+x)%12));
+ const outside=c.reduce((s,x,i)=>s+(toneSet.has(i)?0:x),0);
+ return inside-.30*outside;
+}
 function estimateChord(c,keyRoot){
- let list=[];
- for(let r=0;r<12;r++)for(const t of TEMPLATES){
-  const inside=t.t.reduce((s,x)=>s+c[(r+x)%12],0);
-  const outside=c.reduce((s,x,i)=>s+(t.t.includes((i-r+12)%12)?0:x),0);
-  let score=inside-.30*outside;
-  if(r===keyRoot)score+=.02;
-  list.push({name:NOTES[r]+t.s,score})
+ const list=[];
+ for(let r=0;r<12;r++){
+   const majorScore=chordTemplateScore(c,r,[0,4,7]);
+   const minorScore=chordTemplateScore(c,r,[0,3,7]);
+   const keyBonus=r===keyRoot?.02:0;
+
+   list.push({name:NOTES[r],score:majorScore+keyBonus});
+   list.push({name:NOTES[r]+'m',score:minorScore+keyBonus});
+
+   const dominant7=chordTemplateScore(c,r,[0,4,7,10]);
+   const minor7=chordTemplateScore(c,r,[0,3,7,10]);
+   const major7=chordTemplateScore(c,r,[0,4,7,11]);
+   const sus4=chordTemplateScore(c,r,[0,5,7]);
+   const flat7Energy=c[(r+10)%12];
+   const maj7Energy=c[(r+11)%12];
+
+   // 7thコードは、7th音のエネルギーと三和音との差が明確な時だけ候補にする。
+   if(flat7Energy>=.035 && dominant7>=majorScore+.012){
+     list.push({name:NOTES[r]+'7',score:dominant7-.018+keyBonus});
+   }
+   if(flat7Energy>=.035 && minor7>=minorScore+.012){
+     list.push({name:NOTES[r]+'m7',score:minor7-.018+keyBonus});
+   }
+   // maj7は倍音を誤検出しやすいため、より強い条件と複雑度ペナルティを設ける。
+   if(maj7Energy>=.065 && major7>=majorScore+.045){
+     list.push({name:NOTES[r]+'maj7',score:major7-.060+keyBonus});
+   }
+   if(sus4>=majorScore+.028){
+     list.push({name:NOTES[r]+'sus4',score:sus4-.025+keyBonus});
+   }
  }
  list.sort((a,b)=>b.score-a.score);
- return {name:list[0].name,conf:Math.max(0,Math.min(1,.42+(list[0].score-list[1].score)*4.2))}
+ const best=list[0]||{name:'—',score:0};
+ const second=list[1]||{score:best.score};
+ return {
+   name:best.name,
+   conf:Math.max(0,Math.min(1,.42+(best.score-second.score)*4.2))
+ };
 }
 function estimateBpm(data,sr){
  const hop=Math.max(128,Math.floor(sr*.02)),env=[];
@@ -472,10 +537,23 @@ function estimateBpm(data,sr){
  while(bpm<60)bpm*=2;
  return Math.round(bpm*10)/10
 }
-function smoothChords(chords){
+function smoothChords(chords,confidence=[]){
  const out=[...chords];
- for(let i=1;i<out.length-1;i++)if(out[i-1]===out[i+1]&&out[i]!==out[i-1])out[i]=out[i-1];
- return out
+ for(let i=1;i<out.length-1;i++){
+   if(out[i-1]===out[i+1]&&out[i]!==out[i-1]) out[i]=out[i-1];
+ }
+ // 単独で現れたmaj7は、前後が同じルートのメジャーなら三和音へ戻す。
+ for(let i=0;i<out.length;i++){
+   const m=out[i].match(/^([A-G]#?)maj7$/);
+   if(!m) continue;
+   const root=m[1];
+   const prev=i>0?out[i-1]:'';
+   const next=i<out.length-1?out[i+1]:'';
+   const prevSame=prev===root||prev===root+'maj7';
+   const nextSame=next===root||next===root+'maj7';
+   if(!prevSame&&!nextSame&&(confidence[i]||0)<.68) out[i]=root;
+ }
+ return out;
 }
 
 $('analyzeBtn').onclick=async()=>{
@@ -573,7 +651,7 @@ $('analyzeBtn').onclick=async()=>{
    if(myAnalysisToken!==state.analysisToken||myFileToken!==state.fileToken) return;
 
    state.originalKey=key.name;
-   state.chords=smoothChords(raw);
+   state.chords=smoothChords(raw,conf);
    state.confidence=conf;
    state.currentBar=calcBar(audio.currentTime);
    followCurrent();
