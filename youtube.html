@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#edf6ff">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>AI Guitar Chord Analyzer</title>
+<style>
+:root{--bg:#edf6ff;--panel:#fff;--ink:#102840;--muted:#617990;--border:#bfd3e5;--blue:#0d6fbd;--blue2:#36a2f4;--yellow:#fff1a8;--yellow2:#ffc928;--red:#c83d3d;--green:#18764a;--shadow:0 8px 24px rgba(31,84,128,.11)}
+*{box-sizing:border-box} body{margin:0;background:linear-gradient(180deg,#fbfdff,var(--bg));color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Yu Gothic",Meiryo,sans-serif}
+.app{max-width:1180px;margin:auto;padding:16px 14px 48px} header{padding:4px 0 14px}.eyebrow{font-size:12px;letter-spacing:.18em;color:var(--blue);font-weight:800} h1{font-size:clamp(28px,5vw,50px);margin:8px 0;line-height:1.12;color:var(--blue)}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:16px;box-shadow:var(--shadow);padding:17px;margin-bottom:15px}.panel-title{font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:900;margin-bottom:12px}
+.controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.field label{display:block;font-size:12px;color:var(--muted);font-weight:800;margin-bottom:6px} input,select,button{font:inherit} input[type=text],input[type=number],select{width:100%;border:1px solid var(--border);border-radius:10px;background:#fff;color:var(--ink);padding:10px 11px;font-weight:700} input[type=file]{width:100%}
+.btn{border:1px solid var(--border);background:#f8fbff;color:var(--ink);border-radius:10px;padding:10px 14px;font-weight:850;cursor:pointer;min-height:44px}.btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}.btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}.btn.danger{background:var(--red);color:#fff;border-color:var(--red)}.btn:disabled{opacity:.45;cursor:not-allowed}.row{display:flex;gap:8px;flex-wrap:wrap}.player-grid{display:grid;grid-template-columns:1.15fr .85fr;gap:14px}.time{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:clamp(28px,5vw,46px);font-weight:900;color:var(--blue)}.transport{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:10px}.progress{width:100%;accent-color:var(--blue)}
+.big-status{display:grid;grid-template-columns:1fr 1fr;gap:10px}.status-card{border:1px solid var(--border);border-radius:12px;padding:12px;background:#fbfdff}.status-card small{display:block;color:var(--muted);font-weight:800;margin-bottom:5px}.status-card strong{font-size:clamp(21px,4vw,38px);word-break:break-word}
+.chart-toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}.chart-window{overflow-x:auto;-webkit-overflow-scrolling:touch;scroll-behavior:smooth;border:1px solid var(--border);border-radius:13px;padding:10px;background:#f7fbff}.chart{display:grid;grid-template-columns:repeat(4,minmax(145px,1fr));gap:9px;min-width:650px}.bar{min-height:102px;border:2px solid #c8d8e6;border-radius:11px;background:#fff;padding:8px;cursor:pointer}.bar.current{background:var(--yellow);border-color:var(--yellow2);box-shadow:0 0 0 3px rgba(255,201,40,.2),0 0 18px rgba(255,201,40,.55)}.bar-number{font-size:11px;color:var(--muted);font-weight:800}.bar input{font-size:21px;text-align:center;border:none;background:transparent;padding:5px;width:100%}.bar input:focus{outline:2px solid var(--blue2);background:#fff;border-radius:7px}.conf{font-size:11px;color:var(--muted);text-align:center}
+.badge{display:inline-block;padding:5px 8px;border-radius:999px;background:#e9f5ff;color:var(--blue);font-size:12px;font-weight:800}.help{font-size:12px;color:var(--muted);line-height:1.7}.analysis-status{font-weight:800;color:var(--blue);min-height:1.7em}.spinner{display:inline-block;width:14px;height:14px;border:2px solid #c8d8e6;border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite;vertical-align:-2px;margin-right:6px}@keyframes spin{to{transform:rotate(360deg)}}
+.notice{border:1px solid #b9ddc9;background:#f1fbf6;border-radius:12px;padding:12px;color:#205c3d;font-size:13px;line-height:1.7}.notice strong{color:var(--green)}.source-tabs{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}.source-card{border:1px solid var(--border);border-radius:13px;padding:13px;background:#fbfdff}.source-card h2{font-size:15px;margin:0 0 8px;color:var(--blue)}.capture-status{display:grid;grid-template-columns:auto 1fr;gap:8px 12px;align-items:center;margin-top:10px}.capture-time{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:900;font-size:24px;color:var(--red)}.level{height:10px;border-radius:999px;background:#dce9f3;overflow:hidden}.level>span{display:block;height:100%;width:0;background:linear-gradient(90deg,#36a2f4,#ffc928,#c83d3d);transition:width .12s linear}.capture-dot{display:inline-block;width:10px;height:10px;border-radius:50%;background:#9db0c0;margin-right:6px}.capture-dot.on{background:var(--red);box-shadow:0 0 0 4px rgba(200,61,61,.13);animation:pulse 1.2s ease-in-out infinite}@keyframes pulse{50%{opacity:.45}}.library{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}.song-item{border:1px solid var(--border);border-radius:12px;padding:11px;background:#fbfdff;display:flex;justify-content:space-between;gap:10px;align-items:center}.song-item b{display:block}.song-meta{font-size:12px;color:var(--muted);margin-top:3px}.empty{color:var(--muted);font-size:13px;padding:8px 0}.print-only{display:none}.footer{text-align:center;color:var(--muted);font-size:12px;padding-top:8px}
+@media(max-width:850px){.controls{grid-template-columns:repeat(2,1fr)}.player-grid{grid-template-columns:1fr}.source-tabs{grid-template-columns:1fr}} @media(max-width:640px){.app{padding:10px 9px 34px}.panel{padding:13px;border-radius:13px}.controls{grid-template-columns:1fr}.transport{grid-template-columns:repeat(3,1fr)}.library{grid-template-columns:1fr}.big-status{grid-template-columns:1fr 1fr}.chart{grid-template-columns:repeat(4,minmax(120px,1fr));min-width:540px}}
+@media print{@page{size:A4 landscape;margin:4mm}body{background:#fff!important}.app{max-width:none!important;width:289mm!important;padding:0!important;margin:0!important}header,.panel,.footer{display:none!important}.print-only{display:block!important;width:289mm;height:202mm;overflow:hidden}.print-title{font-size:13pt;font-weight:900;margin-bottom:1mm}.print-meta{font-size:7pt;color:#617990;margin-bottom:1.5mm}.print-grid{display:grid;grid-template-columns:repeat(8,1fr);gap:1mm;transform-origin:top left}.print-bar{border:.3mm solid #9fb8cc;border-radius:1.2mm;height:22mm;padding:1mm;overflow:hidden}.print-bar-number{font-size:5pt;color:#617990;font-weight:800}.print-bar-code{font-size:10pt;font-weight:900;text-align:center;margin-top:3.7mm;white-space:nowrap}.print-bar-conf{font-size:4.4pt;color:#617990;text-align:center;margin-top:1.7mm}}
+</style>
+</head>
+<body>
+<div class="app">
+<header><div class="eyebrow">まっつんのAIギターラボ</div><h1>AI Guitar Chord Analyzer</h1></header>
+
+<div class="panel">
+ <div class="panel-title">AUDIO / 音源</div>
+ <div class="source-tabs">
+  <section class="source-card">
+   <h2>YouTube動画を解析</h2>
+   <div class="field"><label>YouTube URL</label><input id="youtubeUrl" type="text" inputmode="url" placeholder="https://www.youtube.com/watch?v=..."></div>
+   <div class="row" style="margin-top:9px"><button class="btn" id="openYoutube">YouTubeを別タブで開く</button><button class="btn primary" id="startCapture">YouTubeタブ音声を共有</button><button class="btn danger" id="stopCapture" disabled>共有終了・解析開始</button><button class="btn" id="cancelCapture" disabled>共有を中止</button></div>
+   <div class="capture-status"><div><span id="captureDot" class="capture-dot"></span><span id="captureLabel">待機中</span></div><div id="captureTime" class="capture-time">00:00.00</div><div class="help">入力レベル</div><div class="level"><span id="captureLevel"></span></div></div>
+   <p class="help"><strong>使い方：</strong>動画を別タブで開いて先頭で一時停止 → 「YouTubeタブ音声を共有」→ 共有画面でYouTubeタブを選び「タブの音声を共有」をオン → 動画を最初から最後まで再生 → この画面へ戻り「共有終了・解析開始」。URLから音声を抽出せず、ユーザーが共有したタブ音声だけを解析します。</p>
+  </section>
+  <section class="source-card">
+   <h2>音源ファイルを解析</h2>
+   <div class="field"><label>音源ファイル</label><input id="audioFile" type="file" accept=".mp3,.wav,.m4a,.aac,.mp4,.caf,audio/mpeg,audio/wav,audio/mp4,audio/aac"></div>
+   <p class="help">MP3・WAV・M4A・AACなどを選択できます。新しい音源を読み込むと、前の曲の解析結果と再生位置を完全に消去します。</p>
+  </section>
+ </div>
+ <div class="player-grid">
+  <div>
+   <input id="seek" class="progress" type="range" min="0" max="100" value="0" step="0.01">
+   <div class="transport"><button class="btn" id="back5">−5秒</button><button class="btn" id="back01">−0.1秒</button><button class="btn primary" id="playPause" disabled>再生</button><button class="btn" id="fwd01">＋0.1秒</button><button class="btn" id="fwd5">＋5秒</button></div>
+  </div>
+  <div>
+   <div class="time" id="timeDisplay">00:00.00</div>
+   <div class="controls" style="grid-template-columns:1fr 1fr;margin-top:10px">
+    <div class="field"><label>速度</label><select id="speed"><option value="0.5">0.50倍</option><option value="0.75">0.75倍</option><option value="1" selected>1.00倍</option><option value="1.25">1.25倍</option><option value="1.5">1.50倍</option></select></div>
+    <div class="field"><label>キー変更</label><select id="pitch"><option value="-6">−6</option><option value="-5">−5</option><option value="-4">−4</option><option value="-3">−3</option><option value="-2">−2</option><option value="-1">−1</option><option value="0" selected>0</option><option value="1">＋1</option><option value="2">＋2</option><option value="3">＋3</option><option value="4">＋4</option><option value="5">＋5</option><option value="6">＋6</option></select></div>
+   </div>
+   <div class="row" style="margin-top:10px"><button class="btn primary" id="analyzeBtn" disabled>コード解析を開始</button><button class="btn active" id="followToggle">自動追従ON</button></div>
+   <p id="analysisStatus" class="analysis-status">YouTubeタブ音声を共有するか、音源ファイルを選択してください。</p>
+  </div>
+ </div>
+ <audio id="audio" preload="metadata" playsinline></audio>
+</div>
+
+<div class="panel">
+ <div class="panel-title">ANALYSIS SETTINGS / 解析設定</div>
+ <div class="controls">
+  <div class="field"><label>解析モード</label><select id="analysisMode"><option value="basic" selected>基本コード優先</option><option value="extended">7thを含めて解析（厳しめ）</option></select></div>
+  <div class="field"><label>小節内コード数</label><select id="chordsPerBar"><option value="auto" selected>自動（1〜2個）</option><option value="1">1個</option><option value="2">2個</option></select></div>
+  <div class="field"><label>拍子</label><select id="meter"><option value="4">4/4</option><option value="3">3/4</option><option value="6">6/8</option></select></div>
+  <div class="field"><label>コード表示</label><select id="chordDisplay"><option value="transposed">移調後コード</option><option value="original">原曲コード</option></select></div>
+ </div>
+</div>
+
+<div class="panel">
+ <div class="panel-title">ANALYSIS RESULT / 解析結果</div>
+ <div class="controls">
+  <div class="field"><label>曲名</label><input id="songTitle" type="text"></div>
+  <div class="field"><label>推定原曲キー</label><input id="originalKey" type="text" readonly></div>
+  <div class="field"><label>移調後キー</label><input id="transposedKey" type="text" readonly></div>
+  <div class="field"><label>推定BPM</label><input id="bpm" type="number" min="30" max="240" step="0.1" value="90"></div>
+ </div>
+ <div class="controls" style="margin-top:10px">
+  <div class="field"><label>BPM補正</label><div class="row"><button class="btn" id="bpmHalf">÷2</button><button class="btn" id="bpmDouble">×2</button></div></div>
+  <div class="field"><label>1小節目開始（秒）</label><input id="barStart" type="number" step="0.01" value="0"><button class="btn" id="setBarStart" style="margin-top:6px;width:100%">現在位置を1小節目に設定</button></div>
+  <div class="field"><label>総小節数</label><input id="barCount" type="number" min="1" max="500" value="12"></div>
+  <div class="field"><label>表示タイミング補正（秒）</label><input id="displayOffset" type="number" min="-3" max="3" step="0.05" value="0"></div>
+ </div>
+ <div class="row" style="margin-top:10px"><button class="btn" id="offsetMinus">表示 −0.05秒</button><button class="btn" id="offsetPlus">表示 ＋0.05秒</button></div>
+</div>
+
+<div class="panel"><div class="panel-title">NOW PLAYING / 現在位置</div><div class="big-status"><div class="status-card"><small>現在の小節・コード</small><strong id="currentCode">1｜—</strong></div><div class="status-card"><small>次のコード</small><strong id="nextCode">—</strong></div></div></div>
+
+<div class="panel">
+ <div class="panel-title">CHORD CHART / 12小節箱譜</div>
+ <div class="chart-toolbar"><button class="btn" id="prevWindow">前の12小節</button><button class="btn" id="nextWindow">次の12小節</button><button class="btn" id="jumpCurrent">現在位置へ</button><span class="badge" id="rangeBadge">1〜12小節</span></div>
+ <div class="chart-window"><div id="chart" class="chart"></div></div>
+</div>
+
+<div class="panel">
+ <div class="panel-title">SAVE / 保存履歴</div>
+ <div class="notice"><strong>保存されるもの：</strong>保存名・YouTube URL・キー・BPM・コード表・小節設定。<br><strong>保存されないもの：</strong>YouTube動画、共有した音声、音源ファイル。<br><strong>履歴の使い方：</strong>①「コード表を開く」 ② YouTube曲は「YouTubeを開く」から動画を開いて再度タブ音声を共有、ファイル曲は対応する音源を再選択 ③ 再生位置とコード表を合わせます。</div>
+ <div class="controls" style="margin-top:12px"><div class="field"><label>保存名</label><input id="saveName" type="text"></div><div class="field"><label>保存曲数</label><input id="savedCount" type="text" readonly value="0曲"></div></div>
+ <div class="row" style="margin-top:10px"><button class="btn primary" id="saveSong">コード表を保存／更新</button><button class="btn" id="printPdf">A4印刷／PDF</button></div>
+ <div id="songLibrary" class="library"></div>
+</div>
+
+<div id="printArea" class="print-only"><div id="printTitle" class="print-title"></div><div id="printMeta" class="print-meta"></div><div id="printGrid" class="print-grid"></div></div>
+<div class="footer">AI Guitar Chord Analyzer</div>
+</div>
+
+<script>
+'use strict';
+const $=id=>document.getElementById(id);
+const audio=$('audio');
+const SHARP=['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+const FLAT=['C','Db','D','Eb','E','F','Gb','G','Ab','A','Bb','B'];
+const MAJOR_PROFILE=[6.35,2.23,3.48,2.33,4.38,4.09,2.52,5.19,2.39,3.66,2.29,2.88];
+const MINOR_PROFILE=[6.33,2.68,3.52,5.38,2.60,3.53,2.54,4.75,3.98,2.69,3.34,3.17];
+const state={
+ objectUrl:null,audioBuffer:null,fileName:'',fileToken:0,analysisToken:0,isAnalyzing:false,
+ follow:true,currentBar:1,windowStart:1,originalKeyRoot:null,originalMode:'major',preferFlats:false,
+ chords:Array(12).fill('—'),confidence:Array(12).fill(0),
+ audioCtx:null,mediaSource:null,pitchProcessor:null,pitchSemitones:0,pitchGraphReady:false,pitchFallback:false,
+ sourceType:'none',youtubeUrl:'',captureStream:null,captureCtx:null,captureSource:null,captureProcessor:null,captureGain:null,
+ captureChunks:[],captureSamples:0,captureSampleRate:0,captureActive:false,captureToken:0,captureLastUi:0
+};
+const MAX_CAPTURE_SECONDS=15*60;
+
+function fmt(sec){sec=Number.isFinite(sec)?Math.max(0,sec):0;const m=Math.floor(sec/60),s=sec-m*60;return String(m).padStart(2,'0')+':'+s.toFixed(2).padStart(5,'0')}
+function mod(n,m=12){return ((n%m)+m)%m}
+function noteIndex(name){if(!name)return -1;const map={Cb:11,Db:1,Eb:3,Fb:4,Gb:6,Ab:8,Bb:10,'B#':0,'E#':5};return name in map?map[name]:SHARP.indexOf(name)}
+function noteName(i,flats=state.preferFlats){return (flats?FLAT:SHARP)[mod(i)]}
+function keyName(root,mode,flats=state.preferFlats){return noteName(root,flats)+(mode==='minor'?'m':'')}
+function transposeSingleChord(ch,n){
+ const m=String(ch||'').trim().match(/^([A-G](?:#|b)?)([^/]*?)(?:\/([A-G](?:#|b)?))?$/);
+ if(!m)return ch;
+ const r=noteIndex(m[1]),bass=m[3]?noteIndex(m[3]):-1;
+ if(r<0)return ch;
+ return noteName(r+n)+m[2]+(bass>=0?'/'+noteName(bass+n):'');
+}
+function transposeChordText(text,n){if(!text||text==='—')return text;return text.split(/\s+\/\s+/).map(x=>transposeSingleChord(x,n)).join(' / ')}
+function displayedChord(i){const c=state.chords[i]||'—';return $('chordDisplay').value==='original'?c:transposeChordText(c,+$('pitch').value||0)}
+function secondsPerBar(){const bpm=Math.max(1,+$('bpm').value||90),meter=+$('meter').value||4;return (60/bpm)*meter}
+function calcBar(t){const x=(t+(+$('displayOffset').value||0))-(+$('barStart').value||0);const total=Math.max(1,state.chords.length);return Math.min(total,Math.max(1,Math.floor(Math.max(0,x)/secondsPerBar())+1))}
+function barTime(n){return (+$('barStart').value||0)+(n-1)*secondsPerBar()}
+function updateKeys(){
+ if(state.originalKeyRoot===null){$('originalKey').value='';$('transposedKey').value='';return}
+ $('originalKey').value=keyName(state.originalKeyRoot,state.originalMode);
+ $('transposedKey').value=keyName(state.originalKeyRoot+(+$('pitch').value||0),state.originalMode);
+}
+function cancelAnalysis(){state.analysisToken++;state.isAnalyzing=false}
+function resetForNewSource(message='新しい音源を選択してください。'){
+ cancelAnalysis();state.fileToken++;
+ const keepPitch=+$('pitch').value||0;
+ const keepSpeed=+$('speed').value||1;
+ audio.pause();audio.currentTime=0;audio.removeAttribute('src');audio.load();
+ if(state.objectUrl){URL.revokeObjectURL(state.objectUrl);state.objectUrl=null}
+ $('playPause').textContent='再生';$('playPause').disabled=true;$('analyzeBtn').disabled=true;$('seek').value=0;$('seek').max=100;$('timeDisplay').textContent='00:00.00';
+ state.audioBuffer=null;state.fileName='';state.sourceType='none';state.youtubeUrl='';state.currentBar=1;state.windowStart=1;state.originalKeyRoot=null;state.originalMode='major';state.preferFlats=false;state.chords=Array(12).fill('—');state.confidence=Array(12).fill(0);
+ $('songTitle').value='';$('saveName').value='';$('originalKey').value='';$('transposedKey').value='';$('bpm').value=90;$('barCount').value=12;$('barStart').value=0;$('displayOffset').value=0;
+ state.pitchSemitones=keepPitch;audio.playbackRate=keepSpeed;
+ $('analysisStatus').textContent=message;renderChart();updateNow();
+}
+function resetForNewFile(){resetForNewSource('新しい音源を読み込んでいます。')}
+
+function createPitchProcessor(ctx){
+ const node=ctx.createScriptProcessor(2048,2,2);const size=32768,mask=size-1;const buffers=[new Float32Array(size),new Float32Array(size)];let write=0,phase=0;const minDelay=1536,range=8192;
+ function read(buf,pos){while(pos<0)pos+=size;pos%=size;const i0=Math.floor(pos),i1=(i0+1)&mask,f=pos-i0;return buf[i0]*(1-f)+buf[i1]*f}
+ node.onaudioprocess=e=>{
+  const input=e.inputBuffer,output=e.outputBuffer,channels=Math.min(2,input.numberOfChannels||1);const ratio=Math.pow(2,state.pitchSemitones/12);const phaseStep=(1-ratio)/range;
+  for(let i=0;i<output.length;i++){
+   for(let ch=0;ch<2;ch++){const src=input.getChannelData(Math.min(ch,channels-1));buffers[ch][write]=src[i]||0}
+   for(let ch=0;ch<2;ch++){
+    const out=output.getChannelData(ch),src=input.getChannelData(Math.min(ch,channels-1));
+    if(Math.abs(state.pitchSemitones)<0.001){out[i]=src[i]||0;continue}
+    const p1=phase,p2=(phase+.5)%1,d1=minDelay+p1*range,d2=minDelay+p2*range;const a=read(buffers[ch],write-d1),b=read(buffers[ch],write-d2);const w1=.5-.5*Math.cos(2*Math.PI*p1),w2=.5-.5*Math.cos(2*Math.PI*p2);out[i]=a*w1+b*w2;
+   }
+   write=(write+1)&mask;phase+=phaseStep;phase-=Math.floor(phase);
+  }
+ };
+ return node;
+}
+async function ensureAudioGraph(){
+ if(state.pitchGraphReady){if(state.audioCtx.state==='suspended')await state.audioCtx.resume();return true}
+ try{
+  const AC=window.AudioContext||window.webkitAudioContext;if(!AC)return false;state.audioCtx=new AC();state.mediaSource=state.audioCtx.createMediaElementSource(audio);state.pitchProcessor=createPitchProcessor(state.audioCtx);state.mediaSource.connect(state.pitchProcessor);state.pitchProcessor.connect(state.audioCtx.destination);state.pitchGraphReady=true;if(state.audioCtx.state==='suspended')await state.audioCtx.resume();return true;
+ }catch(err){console.error('audio graph',err);return false}
+}
+function applyPlaybackSettings(){
+ const speed=+$('speed').value||1;
+ const pitch=+$('pitch').value||0;
+ state.pitchSemitones=pitch;
+ if(state.pitchGraphReady){
+  audio.preservesPitch=true;audio.webkitPreservesPitch=true;audio.playbackRate=speed;state.pitchFallback=false;
+ }else if(state.pitchFallback&&pitch!==0){
+  audio.preservesPitch=false;audio.webkitPreservesPitch=false;audio.playbackRate=speed*Math.pow(2,pitch/12);
+ }else{
+  audio.preservesPitch=true;audio.webkitPreservesPitch=true;audio.playbackRate=speed;
+ }
+}
+async function setPitchMode(){
+ state.pitchSemitones=+$('pitch').value||0;updateKeys();renderChart();updateNow();
+ if(!audio.src){applyPlaybackSettings();$('analysisStatus').textContent=state.pitchSemitones===0?'原曲キーです。':`コード表示を${state.pitchSemitones>0?'＋':''}${state.pitchSemitones}半音へ変更しました。`;return}
+ if(state.pitchSemitones===0&&!state.pitchGraphReady){state.pitchFallback=false;applyPlaybackSettings();$('analysisStatus').textContent='原曲キーで再生します。';return}
+ const ok=await ensureAudioGraph();
+ state.pitchFallback=!ok&&state.pitchSemitones!==0;
+ applyPlaybackSettings();
+ $('analysisStatus').textContent=ok?(state.pitchSemitones===0?'原曲キーで再生します。':`音源とコードを${state.pitchSemitones>0?'＋':''}${state.pitchSemitones}半音へ変更しました。`):(state.pitchSemitones===0?'原曲キーで再生します。':`キー変更を簡易方式で${state.pitchSemitones>0?'＋':''}${state.pitchSemitones}半音へ適用しました。`);
+}
+function followCurrent(){if(!state.follow)return;state.windowStart=Math.floor((state.currentBar-1)/12)*12+1}
+function updateNow(){$('currentCode').textContent=`${state.currentBar}｜${displayedChord(state.currentBar-1)}`;$('nextCode').textContent=displayedChord(state.currentBar)||'—'}
+function renderChart(){
+ const total=Math.max(1,+$('barCount').value||12);while(state.chords.length<total){state.chords.push('—');state.confidence.push(0)}if(state.chords.length>total){state.chords=state.chords.slice(0,total);state.confidence=state.confidence.slice(0,total)}
+ state.windowStart=Math.min(Math.max(1,state.windowStart),Math.max(1,total-11));const end=Math.min(total,state.windowStart+11);$('rangeBadge').textContent=`${state.windowStart}〜${end}小節`;const chart=$('chart');chart.innerHTML='';
+ for(let b=state.windowStart;b<=end;b++){const box=document.createElement('div');box.className='bar'+(b===state.currentBar?' current':'');const n=document.createElement('div');n.className='bar-number';n.textContent=`${b}小節`;const inp=document.createElement('input');inp.value=displayedChord(b-1);inp.onclick=e=>e.stopPropagation();inp.onchange=()=>{const v=inp.value.trim()||'—';state.chords[b-1]=$('chordDisplay').value==='original'?v:transposeChordText(v,-(+$('pitch').value||0));renderChart();updateNow()};const cf=document.createElement('div');cf.className='conf';cf.textContent=state.confidence[b-1]?`信頼度 ${Math.round(state.confidence[b-1]*100)}%`:'';box.append(n,inp,cf);box.onclick=()=>{if(audio.src){audio.currentTime=Math.max(0,barTime(b));syncFromAudio(true)}};chart.appendChild(box)}
+}
+function syncFromAudio(force=false){const t=Number.isFinite(audio.currentTime)?audio.currentTime:0;$('seek').max=Number.isFinite(audio.duration)?audio.duration:100;$('seek').value=t;$('timeDisplay').textContent=fmt(t);const b=calcBar(t);if(force||b!==state.currentBar){state.currentBar=b;followCurrent();renderChart();updateNow()}}
+function animationLoop(){syncFromAudio(false);requestAnimationFrame(animationLoop)}requestAnimationFrame(animationLoop);
+
+function normalizeYoutubeUrl(value){
+ const raw=String(value||'').trim();if(!raw)return '';
+ try{const u=new URL(raw);const h=u.hostname.replace(/^www\./,'');if(h==='youtu.be'||h==='youtube.com'||h.endsWith('.youtube.com'))return u.href}catch(_){return ''}return '';
+}
+function updateCaptureUi(level=0){
+ const sec=state.captureSampleRate?state.captureSamples/state.captureSampleRate:0;
+ $('captureTime').textContent=fmt(sec);$('captureLevel').style.width=`${Math.min(100,Math.max(0,level*180))}%`;
+}
+function setCaptureButtons(active){
+ $('startCapture').disabled=active;$('stopCapture').disabled=!active;$('cancelCapture').disabled=!active;$('audioFile').disabled=active;
+ $('captureDot').classList.toggle('on',active);$('captureLabel').textContent=active?'タブ音声を取得中':'待機中';
+}
+function releaseCaptureNodes(stopTracks=true){
+ state.captureActive=false;state.captureToken++;setCaptureButtons(false);
+ if(state.captureProcessor){state.captureProcessor.onaudioprocess=null;try{state.captureProcessor.disconnect()}catch(_){}}
+ if(state.captureSource){try{state.captureSource.disconnect()}catch(_){}}
+ if(state.captureGain){try{state.captureGain.disconnect()}catch(_){}}
+ if(stopTracks&&state.captureStream){for(const t of state.captureStream.getTracks())try{t.stop()}catch(_){}}
+ const ctx=state.captureCtx;if(ctx&&ctx.state!=='closed')ctx.close().catch(()=>{});
+ state.captureStream=null;state.captureCtx=null;state.captureSource=null;state.captureProcessor=null;state.captureGain=null;
+}
+function audioBufferToWavBlob(buffer){
+ const samples=buffer.getChannelData(0),bytes=44+samples.length*2,ab=new ArrayBuffer(bytes),v=new DataView(ab);
+ const text=(o,s)=>{for(let i=0;i<s.length;i++)v.setUint8(o+i,s.charCodeAt(i))};
+ text(0,'RIFF');v.setUint32(4,bytes-8,true);text(8,'WAVE');text(12,'fmt ');v.setUint32(16,16,true);v.setUint16(20,1,true);v.setUint16(22,1,true);v.setUint32(24,buffer.sampleRate,true);v.setUint32(28,buffer.sampleRate*2,true);v.setUint16(32,2,true);v.setUint16(34,16,true);text(36,'data');v.setUint32(40,samples.length*2,true);
+ let o=44;for(let i=0;i<samples.length;i++,o+=2){const x=Math.max(-1,Math.min(1,samples[i]));v.setInt16(o,x<0?x*32768:x*32767,true)}return new Blob([ab],{type:'audio/wav'});
+}
+async function startYoutubeCapture(){
+ if(state.captureActive)return;
+ if(!window.isSecureContext&&!['localhost','127.0.0.1'].includes(location.hostname)){$('analysisStatus').textContent='YouTubeタブ音声共有はHTTPSで開いた公開ページから使用してください。';return}
+ if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){$('analysisStatus').textContent='このブラウザはタブ音声共有に対応していません。PC版ChromeまたはEdgeを使用してください。';return}
+ const url=normalizeYoutubeUrl($('youtubeUrl').value);if($('youtubeUrl').value.trim()&&!url){$('analysisStatus').textContent='YouTube URLを確認してください。';return}
+ $('analysisStatus').textContent='共有する画面でYouTubeタブを選び、「タブの音声を共有」をオンにしてください。';
+ let stream=null;
+ try{
+  stream=await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:'browser'},audio:{suppressLocalAudioPlayback:false},preferCurrentTab:false,selfBrowserSurface:'exclude',surfaceSwitching:'include',systemAudio:'include'});
+  const audioTrack=stream.getAudioTracks()[0];if(!audioTrack)throw new Error('NO_AUDIO_TRACK');
+  resetForNewSource('YouTubeタブ音声の取得を開始します。');$('audioFile').value='';state.sourceType='youtube';state.youtubeUrl=url||$('youtubeUrl').value.trim();
+  const AC=window.AudioContext||window.webkitAudioContext;if(!AC)throw new Error('NO_AUDIO_CONTEXT');const ctx=new AC({latencyHint:'interactive'});if(ctx.state==='suspended')await ctx.resume();
+  const audioOnly=new MediaStream([audioTrack]),source=ctx.createMediaStreamSource(audioOnly),processor=ctx.createScriptProcessor(4096,2,1),gain=ctx.createGain();gain.gain.value=0;
+  state.captureStream=stream;state.captureCtx=ctx;state.captureSource=source;state.captureProcessor=processor;state.captureGain=gain;state.captureChunks=[];state.captureSamples=0;state.captureSampleRate=ctx.sampleRate;state.captureActive=true;state.captureLastUi=0;const token=++state.captureToken;
+  processor.onaudioprocess=e=>{
+   if(!state.captureActive||token!==state.captureToken)return;const input=e.inputBuffer,n=input.length,channels=input.numberOfChannels,out=new Float32Array(n);let peak=0;
+   for(let i=0;i<n;i++){let x=0;for(let ch=0;ch<channels;ch++)x+=input.getChannelData(ch)[i]||0;x/=Math.max(1,channels);out[i]=x;peak=Math.max(peak,Math.abs(x))}
+   state.captureChunks.push(out);state.captureSamples+=n;const now=performance.now();if(now-state.captureLastUi>180){state.captureLastUi=now;updateCaptureUi(peak)}
+   if(state.captureSamples/state.captureSampleRate>=MAX_CAPTURE_SECONDS){stopYoutubeCapture(true,false,'最大録音時間に達したため、共有を終了して解析します。')}
+  };
+  source.connect(processor);processor.connect(gain);gain.connect(ctx.destination);for(const t of stream.getTracks())t.addEventListener('ended',()=>{if(state.captureActive)stopYoutubeCapture(true,true)} ,{once:true});
+  setCaptureButtons(true);updateCaptureUi(0);$('analysisStatus').textContent='YouTubeタブ音声を取得中です。動画を最初から最後まで再生し、終了後に「共有終了・解析開始」を押してください。';
+ }catch(err){console.error('YouTube capture',err);if(stream)for(const t of stream.getTracks())try{t.stop()}catch(_){ }releaseCaptureNodes(false);if(err&&err.name==='NotAllowedError')$('analysisStatus').textContent='タブ共有がキャンセルされました。もう一度開始し、YouTubeタブと「タブの音声を共有」を選択してください。';else if(err&&err.message==='NO_AUDIO_TRACK')$('analysisStatus').textContent='音声トラックを取得できませんでした。YouTubeタブを選び、「タブの音声を共有」を必ずオンにしてください。';else $('analysisStatus').textContent='YouTubeタブ音声を開始できませんでした。PC版ChromeまたはEdgeで再度お試しください。'}
+}
+async function stopYoutubeCapture(autoAnalyze=true,endedByBrowser=false,message=''){
+ if(!state.captureActive)return;state.captureActive=false;setCaptureButtons(false);const chunks=state.captureChunks,total=state.captureSamples,sr=state.captureSampleRate,ctx=state.captureCtx;
+ if(state.captureProcessor)state.captureProcessor.onaudioprocess=null;
+ if(state.captureStream)for(const t of state.captureStream.getTracks())try{t.stop()}catch(_){ }
+ try{
+  if(total<sr){releaseCaptureNodes(false);state.captureChunks=[];state.captureSamples=0;updateCaptureUi(0);$('analysisStatus').textContent=endedByBrowser?'共有が終了しましたが、解析できる長さの音声がありません。':'音声が1秒未満のため解析を中止しました。';return}
+  $('analysisStatus').innerHTML='<span class="spinner"></span>YouTube音声を解析用データへ変換しています…';await new Promise(r=>setTimeout(r,20));
+  const buffer=ctx.createBuffer(1,total,sr),dest=buffer.getChannelData(0);let pos=0;for(const chunk of chunks){dest.set(chunk,pos);pos+=chunk.length}
+  releaseCaptureNodes(false);state.captureChunks=[];state.captureSamples=total;state.audioBuffer=buffer;state.fileName='YouTubeタブ音声.wav';state.sourceType='youtube';
+  const blob=audioBufferToWavBlob(buffer);if(state.objectUrl)URL.revokeObjectURL(state.objectUrl);state.objectUrl=URL.createObjectURL(blob);audio.src=state.objectUrl;audio.load();$('seek').max=buffer.duration;$('playPause').disabled=false;$('analyzeBtn').disabled=false;
+  const defaultTitle='YouTube '+new Date().toLocaleString('ja-JP',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit'});$('songTitle').value=$('songTitle').value||defaultTitle;$('saveName').value=$('saveName').value||$('songTitle').value;updateCaptureUi(0);
+  $('analysisStatus').textContent=message||`YouTube音声の取得完了：${fmt(buffer.duration)}。コード解析を開始します。`;if(autoAnalyze)await analyzeCurrentAudio();
+ }catch(err){console.error('capture finalize',err);releaseCaptureNodes(false);$('analysisStatus').textContent='取得したYouTube音声を解析用データへ変換できませんでした。もう一度共有してください。'}
+}
+function cancelYoutubeCapture(){
+ if(!state.captureActive)return;releaseCaptureNodes(true);state.captureChunks=[];state.captureSamples=0;state.captureSampleRate=0;updateCaptureUi(0);$('analysisStatus').textContent='YouTubeタブ音声の共有を中止しました。';
+}
+$('openYoutube').onclick=()=>{const url=normalizeYoutubeUrl($('youtubeUrl').value);if(!url){$('analysisStatus').textContent='YouTube URLを入力してください。';return}const w=window.open(url,'_blank','noopener,noreferrer');if(!w)$('analysisStatus').textContent='YouTubeタブを開けませんでした。ブラウザのポップアップ許可を確認してください。'};
+$('startCapture').onclick=()=>startYoutubeCapture();$('stopCapture').onclick=()=>stopYoutubeCapture(true);$('cancelCapture').onclick=()=>cancelYoutubeCapture();
+
+$('audioFile').onchange=async e=>{
+ const f=e.target.files&&e.target.files[0];if(!f)return;if(state.captureActive)cancelYoutubeCapture();resetForNewFile();$('youtubeUrl').value='';const myToken=state.fileToken;state.sourceType='file';state.fileName=f.name;$('songTitle').value=f.name.replace(/\.[^.]+$/,'');$('saveName').value=$('songTitle').value;$('analysisStatus').innerHTML='<span class="spinner"></span>音源を読み込んでいます…';state.objectUrl=URL.createObjectURL(f);audio.src=state.objectUrl;audio.load();
+ try{const arr=await f.arrayBuffer();if(myToken!==state.fileToken)return;const AC=window.AudioContext||window.webkitAudioContext;if(!AC)throw new Error('AudioContext unavailable');const ctx=new AC();state.audioBuffer=await ctx.decodeAudioData(arr.slice(0));if(ctx.close)ctx.close();if(myToken!==state.fileToken)return;$('seek').max=state.audioBuffer.duration;$('playPause').disabled=false;$('analyzeBtn').disabled=false;$('analysisStatus').textContent=`読み込み完了：${f.name}（${fmt(state.audioBuffer.duration)}）`}
+ catch(err){console.error(err);if(myToken!==state.fileToken)return;state.audioBuffer=null;$('playPause').disabled=true;$('analyzeBtn').disabled=true;$('analysisStatus').textContent='音源を読み込めませんでした。MP3またはWAVで再度お試しください。'}
+};
+$('playPause').onclick=async()=>{if(!audio.src)return;try{if(audio.paused){if((+$('pitch').value||0)!==0&&!state.pitchGraphReady)await setPitchMode();else applyPlaybackSettings();await audio.play()}else audio.pause()}catch(err){console.error(err);$('analysisStatus').textContent='再生を開始できませんでした。音源を選び直して、もう一度再生してください。'}};
+audio.onplay=()=>$('playPause').textContent='停止';audio.onpause=()=>$('playPause').textContent='再生';audio.onended=()=>{audio.currentTime=0;syncFromAudio(true)};
+$('seek').oninput=()=>{if(audio.src){audio.currentTime=+$('seek').value;syncFromAudio(true)}};$('back5').onclick=()=>{if(audio.src){audio.currentTime=Math.max(0,audio.currentTime-5);syncFromAudio(true)}};$('fwd5').onclick=()=>{if(audio.src){audio.currentTime=Math.min(audio.duration||0,audio.currentTime+5);syncFromAudio(true)}};$('back01').onclick=()=>{if(audio.src){audio.currentTime=Math.max(0,audio.currentTime-.1);syncFromAudio(true)}};$('fwd01').onclick=()=>{if(audio.src){audio.currentTime=Math.min(audio.duration||0,audio.currentTime+.1);syncFromAudio(true)}};
+$('speed').onchange=()=>applyPlaybackSettings();$('pitch').onchange=()=>setPitchMode();
+$('followToggle').onclick=()=>{state.follow=!state.follow;$('followToggle').textContent=state.follow?'自動追従ON':'自動追従OFF';$('followToggle').classList.toggle('active',state.follow);if(state.follow){followCurrent();renderChart()}};
+$('prevWindow').onclick=()=>{state.windowStart=Math.max(1,state.windowStart-12);renderChart()};$('nextWindow').onclick=()=>{state.windowStart=Math.min(Math.max(1,state.chords.length-11),state.windowStart+12);renderChart()};$('jumpCurrent').onclick=()=>{state.windowStart=Math.floor((state.currentBar-1)/12)*12+1;renderChart()};
+$('offsetMinus').onclick=()=>{$('displayOffset').value=(Math.max(-3,(+$('displayOffset').value||0)-.05)).toFixed(2);syncFromAudio(true)};$('offsetPlus').onclick=()=>{$('displayOffset').value=(Math.min(3,(+$('displayOffset').value||0)+.05)).toFixed(2);syncFromAudio(true)};
+$('setBarStart').onclick=()=>{$('barStart').value=(audio.currentTime||0).toFixed(2);state.currentBar=1;state.windowStart=1;syncFromAudio(true);renderChart()};
+$('bpmHalf').onclick=()=>{$('bpm').value=Math.max(30,(+$('bpm').value||90)/2).toFixed(1);syncFromAudio(true)};$('bpmDouble').onclick=()=>{$('bpm').value=Math.min(240,(+$('bpm').value||90)*2).toFixed(1);syncFromAudio(true)};
+['bpm','meter','barStart','barCount','displayOffset'].forEach(id=>$(id).onchange=()=>{syncFromAudio(true);renderChart()});$('chordDisplay').onchange=()=>{renderChart();updateNow()};
+
+function monoBuffer(buffer){if(buffer.numberOfChannels===1)return new Float32Array(buffer.getChannelData(0));const n=buffer.length,out=new Float32Array(n);for(let ch=0;ch<buffer.numberOfChannels;ch++){const x=buffer.getChannelData(ch);for(let i=0;i<n;i++)out[i]+=x[i]/buffer.numberOfChannels}return out}
+function estimateTempoAndStart(data,sr,meter){
+ const hop=512,frame=1024,n=Math.max(1,Math.floor((data.length-frame)/hop));const env=new Float32Array(n);let prev=0;
+ for(let i=0;i<n;i++){let sum=0;const s=i*hop;for(let j=0;j<frame;j+=4){const v=data[s+j]||0;sum+=v*v}const rms=Math.sqrt(sum/(frame/4));env[i]=Math.max(0,rms-prev*.92);prev=rms}
+ let mean=0;for(const v of env)mean+=v;mean/=env.length||1;for(let i=0;i<env.length;i++)env[i]=Math.max(0,env[i]-mean*.35);
+ const hopSec=hop/sr;let bestBpm=90,best=-Infinity;
+ for(let bpm=50;bpm<=200;bpm+=.5){const lag=Math.round(60/bpm/hopSec);if(lag<2)continue;let s1=0,s2=0,s3=0;for(let i=lag;i<env.length;i++)s1+=env[i]*env[i-lag];for(let i=2*lag;i<env.length;i++)s2+=env[i]*env[i-2*lag];const half=Math.max(1,Math.round(lag/2));for(let i=half;i<env.length;i++)s3+=env[i]*env[i-half];const score=s1+.45*s2+.12*s3;if(score>best){best=score;bestBpm=bpm}}
+ while(bestBpm>130)bestBpm/=2;while(bestBpm<55)bestBpm*=2;bestBpm=Math.round(bestBpm*10)/10;
+ const beat=60/bestBpm,maxTime=Math.min(data.length/sr,90),steps=48;let bestPhase=0,bestPhaseScore=-1;
+ for(let p=0;p<steps;p++){const phase=p*beat/steps;let score=0,count=0;for(let t=phase;t<maxTime;t+=beat){const idx=Math.round(t/hopSec);for(let d=-1;d<=1;d++)score+=env[idx+d]||0;count++}score/=Math.max(1,count);if(score>bestPhaseScore){bestPhaseScore=score;bestPhase=phase}}
+ let downbeat=bestPhase,downScore=-1;const beatsPerBar=meter===6?2:meter;
+ for(let k=0;k<beatsPerBar;k++){const start=bestPhase+k*beat;let score=0,count=0;for(let t=start;t<maxTime;t+=beat*beatsPerBar){const idx=Math.round(t/hopSec);score+=(env[idx]||0)+.5*(env[idx-1]||0)+.5*(env[idx+1]||0);count++}score/=Math.max(1,count);if(score>downScore){downScore=score;downbeat=start}}
+ let peak=0;for(const v of env)if(v>peak)peak=v;let firstIdx=0;while(firstIdx<env.length&&(env[firstIdx]||0)<peak*.16)firstIdx++;const firstSound=firstIdx*hopSec;let start=0;if(firstSound>.6){start=bestPhase;while(start+beat<firstSound-.08)start+=beat}return {bpm:bestBpm,start:Math.max(0,start)};
+}
+function fftMagnitudes(frame){
+ const n=frame.length,re=new Float64Array(n),im=new Float64Array(n);for(let i=0;i<n;i++)re[i]=frame[i];
+ for(let i=1,j=0;i<n;i++){let bit=n>>1;for(;j&bit;bit>>=1)j^=bit;j^=bit;if(i<j){let t=re[i];re[i]=re[j];re[j]=t}}
+ for(let len=2;len<=n;len<<=1){const ang=-2*Math.PI/len,wlenR=Math.cos(ang),wlenI=Math.sin(ang);for(let i=0;i<n;i+=len){let wr=1,wi=0;for(let j=0;j<len/2;j++){const uR=re[i+j],uI=im[i+j],vR=re[i+j+len/2]*wr-im[i+j+len/2]*wi,vI=re[i+j+len/2]*wi+im[i+j+len/2]*wr;re[i+j]=uR+vR;im[i+j]=uI+vI;re[i+j+len/2]=uR-vR;im[i+j+len/2]=uI-vI;const nwr=wr*wlenR-wi*wlenI;wi=wr*wlenI+wi*wlenR;wr=nwr}}}
+ const mag=new Float32Array(n/2);for(let i=0;i<mag.length;i++)mag[i]=Math.hypot(re[i],im[i]);return mag;
+}
+function frameFeature(data,sr,center){
+ const N=4096,frame=new Float32Array(N),start=Math.round(center*sr-N/2);let energy=0;for(let i=0;i<N;i++){const v=data[start+i]||0,w=.5-.5*Math.cos(2*Math.PI*i/(N-1));frame[i]=v*w;energy+=v*v}energy=Math.sqrt(energy/N);const mag=fftMagnitudes(frame),chroma=new Float32Array(12),bass=new Float32Array(12);let total=0;
+ const minBin=Math.max(2,Math.floor(50*N/sr)),maxBin=Math.min(mag.length-2,Math.ceil(2200*N/sr));
+ for(let k=minBin;k<=maxBin;k++){const m=mag[k];if(m<mag[k-1]||m<mag[k+1])continue;const f=k*sr/N,midi=69+12*Math.log2(f/440),nearest=Math.round(midi),detune=midi-nearest,pc=mod(nearest),tune=Math.exp(-.5*(detune/.20)*(detune/.20)),weight=Math.log1p(m)*tune/Math.sqrt(Math.max(.5,f/110));chroma[pc]+=weight;total+=weight;if(f<320)bass[pc]+=weight/Math.sqrt(Math.max(.5,f/82.4))}
+ let sum=0;for(const v of chroma)sum+=v;if(sum>0)for(let i=0;i<12;i++)chroma[i]/=sum;sum=0;for(const v of bass)sum+=v;if(sum>0)for(let i=0;i<12;i++)bass[i]/=sum;return {chroma,bass,energy};
+}
+function median(values){if(!values.length)return 0;const x=[...values].sort((a,b)=>a-b),m=x.length>>1;return x.length%2?x[m]:(x[m-1]+x[m])/2}
+function segmentFeature(data,sr,start,end){
+ const dur=Math.max(.15,end-start),points=dur<.7?[.5]:[.16,.33,.5,.67,.84],frames=[];for(const p of points){const t=start+dur*p;if(t>0&&t<data.length/sr)frames.push(frameFeature(data,sr,t))}if(!frames.length)return {chroma:new Float32Array(12),bass:new Float32Array(12),presence:new Float32Array(12),energy:0};
+ const chroma=new Float32Array(12),bass=new Float32Array(12),presence=new Float32Array(12);for(let pc=0;pc<12;pc++){chroma[pc]=median(frames.map(f=>f.chroma[pc]));bass[pc]=median(frames.map(f=>f.bass[pc]));presence[pc]=frames.filter(f=>f.chroma[pc]>.065).length/frames.length}let sum=0;for(const v of chroma)sum+=v;if(sum>0)for(let i=0;i<12;i++)chroma[i]/=sum;sum=0;for(const v of bass)sum+=v;if(sum>0)for(let i=0;i<12;i++)bass[i]/=sum;return {chroma,bass,presence,energy:median(frames.map(f=>f.energy))};
+}
+function correlation(a,b){let am=0,bm=0;for(let i=0;i<12;i++){am+=a[i];bm+=b[i]}am/=12;bm/=12;let n=0,da=0,db=0;for(let i=0;i<12;i++){const x=a[i]-am,y=b[i]-bm;n+=x*y;da+=x*x;db+=y*y}return n/Math.sqrt((da||1)*(db||1))}
+function rotated(profile,root){const out=new Float32Array(12);for(let i=0;i<12;i++)out[mod(i+root)]=profile[i];return out}
+function acousticBaseScore(f,s){
+ const c=f.chroma,b=f.bass,r=s.root,q=s.q;let tones,conflict=[];
+ if(q==='m'||q==='m7'){tones=[[0,1],[3,.92],[7,.68]];conflict=[4]}else{tones=[[0,1],[4,.92],[7,.68]];conflict=[3]}
+ if(q==='7'||q==='m7')tones.push([10,.48]);if(q==='maj7')tones.push([11,.48]);let score=0,inside=new Set();
+ for(const [d,w] of tones){score+=c[mod(r+d)]*w;inside.add(mod(r+d))}
+ for(const d of conflict)score-=c[mod(r+d)]*.55;
+ let outside=0;for(let i=0;i<12;i++)if(!inside.has(i))outside+=c[i];score-=outside*.10;score+=b[r]*.16;
+ if(q==='7'||q==='m7'){const pc=mod(r+10);if(f.presence[pc]<.45||c[pc]<.055)score-=.14;else score+=.02}
+ if(q==='maj7'){const pc=mod(r+11);if(f.presence[pc]<.70||c[pc]<.075||c[pc]<Math.min(c[r],c[mod(r+4)])*.42)score-=.30;else score-=.03}
+ return score;
+}
+function estimateKey(features){
+ const global=new Float32Array(12);let weight=0;
+ for(const f of features){if(f.energy<.004)continue;for(let i=0;i<12;i++)global[i]+=f.chroma[i]*f.energy;weight+=f.energy}
+ if(weight)for(let i=0;i<12;i++)global[i]/=weight;
+ const basic=[];for(let r=0;r<12;r++)basic.push({root:r,q:''},{root:r,q:'m'});
+ const rootMass=new Float64Array(12),majorMass=new Float64Array(12),minorMass=new Float64Array(12);let massTotal=0;
+ for(const f of features){if(f.energy<.004)continue;let best=basic[0],bestScore=-99,second=-99;for(const st of basic){const sc=acousticBaseScore(f,st);if(sc>bestScore){second=bestScore;bestScore=sc;best=st}else if(sc>second)second=sc}const w=Math.max(.15,Math.min(1,f.energy*18))*(.6+Math.max(0,bestScore-second)*3);rootMass[best.root]+=w;if(best.q==='m')minorMass[best.root]+=w;else majorMass[best.root]+=w;massTotal+=w}
+ if(massTotal){for(let i=0;i<12;i++){rootMass[i]/=massTotal;majorMass[i]/=massTotal;minorMass[i]/=massTotal}}
+ const active=features.filter(f=>f.energy>=.004),edge=[...active.slice(0,4),...active.slice(-6)];
+ const edgeMass=new Float64Array(12);for(const f of edge){let br=0,bs=-99;for(const st of basic){const sc=acousticBaseScore(f,st);if(sc>bs){bs=sc;br=st.root}}edgeMass[br]++}
+ let best={score:-99,root:0,mode:'major'};
+ for(let r=0;r<12;r++){
+  const pMaj=correlation(global,rotated(MAJOR_PROFILE,r));
+  const cadenceMaj=rootMass[r]*1.35+rootMass[mod(r+7)]*.80+rootMass[mod(r+5)]*.30+majorMass[r]*.55+majorMass[mod(r+7)]*.25+(edgeMass[r]||0)*.025;
+  const sMaj=pMaj*.48+cadenceMaj;
+  if(sMaj>best.score)best={score:sMaj,root:r,mode:'major'};
+  const pMin=correlation(global,rotated(MINOR_PROFILE,r));
+  const cadenceMin=rootMass[r]*1.35+rootMass[mod(r+7)]*.80+rootMass[mod(r+5)]*.30+minorMass[r]*.55+majorMass[mod(r+7)]*.25+(edgeMass[r]||0)*.025;
+  const sMin=pMin*.48+cadenceMin;
+  if(sMin>best.score)best={score:sMin,root:r,mode:'minor'};
+ }
+ return best;
+}
+function keyPrior(root,quality,keyRoot,mode){
+ const d=mod(root-keyRoot);
+ if(mode==='major'){
+  const q={0:['','maj7'],2:['m','m7'],4:['m','m7'],5:['','maj7'],7:['','7'],9:['m','m7']}[d];
+  return q?(q.includes(quality)?.17:-.11):-.19;
+ }
+ const q={0:['m','m7'],2:[''],3:['','maj7'],5:['m','m7'],7:['','7'],8:['','maj7'],10:['']}[d];
+ return q?(q.includes(quality)?.16:-.10):-.18;
+}
+function candidateStates(mode){const out=[];for(let r=0;r<12;r++){out.push({root:r,q:''},{root:r,q:'m'});if(mode==='extended')out.push({root:r,q:'7'},{root:r,q:'m7'})}return out}
+function acousticScore(f,s,key){return acousticBaseScore(f,s)+keyPrior(s.root,s.q,key.root,key.mode)}
+function transitionPenalty(a,b,key){if(a.root===b.root&&a.q===b.q)return 0;if(a.root===b.root)return .035;const d=mod(b.root-a.root);if(d===5||d===7)return .045;const pa=keyPrior(a.root,a.q,key.root,key.mode)>0,pb=keyPrior(b.root,b.q,key.root,key.mode)>0;return pa&&pb?.065:.11}
+function decodeChords(features,key,mode){
+ const states=candidateStates(mode),N=features.length,S=states.length,dp=Array.from({length:N},()=>new Float64Array(S)),back=Array.from({length:N},()=>new Int16Array(S)),local=Array.from({length:N},()=>new Float64Array(S));
+ for(let s=0;s<S;s++){local[0][s]=acousticScore(features[0],states[s],key);dp[0][s]=local[0][s]}
+ for(let i=1;i<N;i++){for(let s=0;s<S;s++){local[i][s]=acousticScore(features[i],states[s],key);let best=-1e9,bi=0;for(let p=0;p<S;p++){const v=dp[i-1][p]-transitionPenalty(states[p],states[s],key);if(v>best){best=v;bi=p}}dp[i][s]=best+local[i][s];back[i][s]=bi}}
+ let last=0;for(let s=1;s<S;s++)if(dp[N-1][s]>dp[N-1][last])last=s;const path=new Array(N);for(let i=N-1;i>=0;i--){path[i]=states[last];last=back[i][last]}
+ return path.map((s,i)=>{const scores=Array.from(local[i]).sort((a,b)=>b-a),diff=(scores[0]||0)-(scores[1]||0);return {state:s,conf:Math.max(.35,Math.min(.96,.48+diff*2.8))}});
+}
+function applyConservativeMaj7(decoded,features,key,mode){
+ if(mode!=='extended')return decoded;
+ const out=decoded.map(x=>({state:{...x.state},conf:x.conf}));
+ for(let i=0;i<out.length;i++){
+  const st=out[i].state;if(st.q!==''||![0,5].includes(mod(st.root-key.root))||key.mode!=='major')continue;
+  const f=features[i],pc=mod(st.root+11),strong=f.presence[pc]>=.98&&f.chroma[pc]>=.115&&f.chroma[pc]>=f.chroma[st.root]*.72;
+  const prev=i>0&&out[i-1].state.root===st.root&&features[i-1].presence[pc]>=.9;
+  const next=i+1<out.length&&out[i+1].state.root===st.root&&features[i+1].presence[pc]>=.9;
+  if(strong&&(prev||next)){out[i].state.q='maj7';out[i].conf=Math.min(out[i].conf,.78)}
+ }
+ return out;
+}
+function formatState(x,feature,allowBass=false){let name=noteName(x.state.root)+x.state.q;const bass=feature.bass;let bi=0;for(let i=1;i<12;i++)if(bass[i]>bass[bi])bi=i;const intervals=x.state.q.startsWith('m')?[0,3,7,10]:x.state.q==='7'?[0,4,7,10]:x.state.q==='maj7'?[0,4,7,11]:[0,4,7];if(allowBass&&bi!==x.state.root&&intervals.includes(mod(bi-x.state.root))&&bass[bi]>.48&&bass[bi]>bass[x.state.root]*1.65)name+='/'+noteName(bi);return name}
+function sameCore(a,b){return a===b||a.replace(/\/.*$/,'')===b.replace(/\/.*$/,'')}
+
+async function analyzeCurrentAudio(){
+ if(!state.audioBuffer||state.isAnalyzing)return;const token=++state.analysisToken,fileToken=state.fileToken;state.isAnalyzing=true;state.originalKeyRoot=null;state.chords=Array(12).fill('—');state.confidence=Array(12).fill(0);state.currentBar=1;state.windowStart=1;$('originalKey').value='';$('transposedKey').value='';$('barCount').value=12;renderChart();updateNow();$('analyzeBtn').disabled=true;$('analysisStatus').innerHTML='<span class="spinner"></span>テンポと小節位置を解析中…';await new Promise(r=>setTimeout(r,30));
+ try{
+  const data=monoBuffer(state.audioBuffer),sr=state.audioBuffer.sampleRate,meter=+$('meter').value||4,duration=state.audioBuffer.duration;const timing=estimateTempoAndStart(data,sr,meter);if(token!==state.analysisToken||fileToken!==state.fileToken)return;$('bpm').value=timing.bpm;$('barStart').value=timing.start.toFixed(2);const spb=secondsPerBar(),bars=Math.max(1,Math.ceil(Math.max(0,duration-timing.start)/spb));$('barCount').value=bars;
+  const segments=[],barMap=[],setting=$('chordsPerBar').value;for(let b=0;b<bars;b++){const s=timing.start+b*spb,e=Math.min(duration,s+spb);if(setting==='1'){segments.push(segmentFeature(data,sr,s,e));barMap.push([segments.length-1])}else{const mid=(s+e)/2;segments.push(segmentFeature(data,sr,s,mid));const a=segments.length-1;segments.push(segmentFeature(data,sr,mid,e));barMap.push([a,a+1])}if(b%3===0){if(token!==state.analysisToken||fileToken!==state.fileToken)return;$('analysisStatus').innerHTML=`<span class="spinner"></span>${b+1}/${bars}小節を音響解析中…`;await new Promise(r=>setTimeout(r,0))}}
+  const key=estimateKey(segments);state.originalKeyRoot=key.root;state.originalMode=key.mode;state.preferFlats=[1,3,6,8,10].includes(key.root)&&key.mode==='major';let decoded=decodeChords(segments,key,$('analysisMode').value);decoded=applyConservativeMaj7(decoded,segments,key,$('analysisMode').value);const chords=[],conf=[];
+  for(const ids of barMap){const allowBass=$('analysisMode').value==='extended';const a=formatState(decoded[ids[0]],segments[ids[0]],allowBass);if(ids.length===1){chords.push(a);conf.push(decoded[ids[0]].conf);continue}const b=formatState(decoded[ids[1]],segments[ids[1]],allowBass),ca=decoded[ids[0]].conf,cb=decoded[ids[1]].conf;if($('chordsPerBar').value==='2'){chords.push(a+' / '+b)}else if(sameCore(a,b)||Math.min(ca,cb)<.48){chords.push(ca>=cb?a:b)}else{chords.push(a+' / '+b)}conf.push((ca+cb)/2)}
+  if(token!==state.analysisToken||fileToken!==state.fileToken)return;state.chords=chords;state.confidence=conf;state.currentBar=calcBar(audio.currentTime);followCurrent();updateKeys();renderChart();updateNow();$('analysisStatus').textContent=`解析完了：キー ${keyName(state.originalKeyRoot,state.originalMode)}／BPM ${$('bpm').value}／${bars}小節`;
+ }catch(err){console.error(err);if(token===state.analysisToken&&fileToken===state.fileToken)$('analysisStatus').textContent='解析中にエラーが発生しました。音源を選び直して再度実行してください。'}finally{if(token===state.analysisToken&&fileToken===state.fileToken){state.isAnalyzing=false;$('analyzeBtn').disabled=state.audioBuffer===null}}
+}
+$('analyzeBtn').onclick=()=>analyzeCurrentAudio();
+
+const STORE='ai-guitar-chord-analyzer-library-v2';function library(){try{return JSON.parse(localStorage.getItem(STORE)||'{}')}catch(_){return {}}}function saveLibrary(x){localStorage.setItem(STORE,JSON.stringify(x))}
+function renderLibrary(){const l=library(),arr=Object.values(l).sort((a,b)=>(b.updated||0)-(a.updated||0));$('savedCount').value=`${arr.length}曲`;$('songLibrary').innerHTML='';if(!arr.length){$('songLibrary').innerHTML='<div class="empty">保存されたコード表はありません。</div>';return}for(const d of arr){const item=document.createElement('div');item.className='song-item';const info=document.createElement('div');info.innerHTML=`<b>${escapeHtml(d.name)}</b><div class="song-meta">${d.sourceType==='youtube'?'YouTube／':'音源ファイル／'}${escapeHtml(d.key||'—')}／BPM ${d.bpm}／${d.chords.length}小節</div>`;const row=document.createElement('div');row.className='row';const open=document.createElement('button');open.className='btn';open.textContent='コード表を開く';open.onclick=()=>{cancelAnalysis();state.fileToken++;if(state.captureActive)cancelYoutubeCapture();audio.pause();audio.currentTime=0;audio.removeAttribute('src');audio.load();if(state.objectUrl){URL.revokeObjectURL(state.objectUrl);state.objectUrl=null}state.audioBuffer=null;$('playPause').disabled=true;$('analyzeBtn').disabled=true;$('seek').value=0;$('seek').max=100;$('timeDisplay').textContent='00:00.00';state.originalKeyRoot=d.keyRoot;state.originalMode=d.mode||'major';state.preferFlats=!!d.preferFlats;$('songTitle').value=d.title||d.name;$('saveName').value=d.name;state.sourceType=d.sourceType||'file';state.youtubeUrl=d.youtubeUrl||'';$('youtubeUrl').value=state.youtubeUrl;$('bpm').value=d.bpm;$('meter').value=d.meter;$('barStart').value=d.barStart;$('displayOffset').value=d.offset||0;state.chords=[...d.chords];state.confidence=[...(d.confidence||[])];$('barCount').value=state.chords.length;state.currentBar=1;state.windowStart=1;updateKeys();renderChart();updateNow();$('analysisStatus').textContent=d.youtubeUrl?'保存したコード表を開きました。「YouTubeを開く」から動画を開き、再度タブ音声を共有してください。':'保存したコード表を開きました。対応する音源ファイルを再選択してください。'};const del=document.createElement('button');del.className='btn danger';del.textContent='削除';del.onclick=()=>{const x=library();delete x[d.name];saveLibrary(x);renderLibrary()};if(d.youtubeUrl){const yt=document.createElement('button');yt.className='btn';yt.textContent='YouTubeを開く';yt.onclick=()=>window.open(d.youtubeUrl,'_blank','noopener,noreferrer');row.append(open,yt,del)}else row.append(open,del);item.append(info,row);$('songLibrary').appendChild(item)}}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+$('saveSong').onclick=()=>{const name=($('saveName').value||$('songTitle').value).trim();if(!name)return alert('保存名を入力してください。');const x=library();x[name]={name,title:$('songTitle').value,sourceType:state.sourceType,youtubeUrl:state.sourceType==='youtube'?(state.youtubeUrl||normalizeYoutubeUrl($('youtubeUrl').value)):'',keyRoot:state.originalKeyRoot,mode:state.originalMode,preferFlats:state.preferFlats,key:$('originalKey').value,bpm:+$('bpm').value,meter:+$('meter').value,barStart:+$('barStart').value,offset:+$('displayOffset').value,chords:[...state.chords],confidence:[...state.confidence],updated:Date.now()};saveLibrary(x);renderLibrary();alert('コード表を保存しました。YouTube動画・共有音声・音源ファイルは保存されません。')};
+function buildPrint(){const total=state.chords.length,rows=Math.ceil(total/8),scale=Math.min(1,7.4/Math.max(1,rows));$('printTitle').textContent=$('songTitle').value||'コード箱譜';$('printMeta').textContent=`キー ${$('originalKey').value||'—'}　BPM ${$('bpm').value}　全${total}小節`;$('printGrid').style.transform=`scale(${scale})`;$('printGrid').style.width=`${100/scale}%`;$('printGrid').innerHTML='';for(let i=0;i<total;i++){const b=document.createElement('div');b.className='print-bar';b.innerHTML=`<div class="print-bar-number">${i+1}小節</div><div class="print-bar-code">${escapeHtml(displayedChord(i))}</div><div class="print-bar-conf">${state.confidence[i]?`信頼度 ${Math.round(state.confidence[i]*100)}%`:''}</div>`;$('printGrid').appendChild(b)}}$('printPdf').onclick=()=>{buildPrint();setTimeout(()=>window.print(),50)};
+
+renderChart();updateNow();renderLibrary();setCaptureButtons(false);if(!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia){$('startCapture').disabled=true;$('captureLabel').textContent='非対応ブラウザ';}
+</script>
+</body>
+</html>
