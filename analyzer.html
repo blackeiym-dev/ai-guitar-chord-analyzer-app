@@ -64,6 +64,7 @@
  <div class="controls">
   <div class="field"><label>曲名</label><input id="songTitle" type="text"></div>
   <div class="field"><label>推定原曲キー</label><input id="originalKey" type="text" readonly></div>
+  <div class="field"><label>キーの手動修正</label><div class="row"><select id="manualKeyRoot"><option value="">自動</option><option value="0">C</option><option value="1">C#/Db</option><option value="2">D</option><option value="3">D#/Eb</option><option value="4">E</option><option value="5">F</option><option value="6">F#/Gb</option><option value="7">G</option><option value="8">G#/Ab</option><option value="9">A</option><option value="10">A#/Bb</option><option value="11">B</option></select><select id="manualMode"><option value="major">メジャー</option><option value="minor">マイナー</option></select><button class="btn" id="applyManualKey">キーを反映</button></div></div>
   <div class="field"><label>移調後キー</label><input id="transposedKey" type="text" readonly></div>
   <div class="field"><label>推定BPM</label><input id="bpm" type="number" min="30" max="240" step="0.1" value="90"></div>
  </div>
@@ -276,12 +277,12 @@ function estimateKey(features){
   const cadenceMaj=rootMass[r]*1.35+rootMass[mod(r+7)]*.80+rootMass[mod(r+5)]*.30+majorMass[r]*.55+majorMass[mod(r+7)]*.25+(edgeMass[r]||0)*.025;
   const majorThird=global[mod(r+4)]||0,minorThird=global[mod(r+3)]||0;
   const tonicMajorEvidence=Math.max(0,majorMass[r]-minorMass[r])*.42+Math.max(0,majorThird-minorThird)*.28;
-  candidates.push({score:pMaj*.48+cadenceMaj+tonicMajorEvidence,root:r,mode:'major'});
+  candidates.push({score:pMaj*.82+cadenceMaj*.42+tonicMajorEvidence*.55,root:r,mode:'major'});
 
   const pMin=correlation(global,rotated(MINOR_PROFILE,r));
   const cadenceMin=rootMass[r]*1.35+rootMass[mod(r+7)]*.80+rootMass[mod(r+5)]*.30+minorMass[r]*.68+majorMass[mod(r+7)]*.25+(edgeMass[r]||0)*.025;
   const tonicMinorEvidence=Math.max(0,minorMass[r]-majorMass[r])*.58+Math.max(0,minorThird-majorThird)*.42;
-  candidates.push({score:pMin*.48+cadenceMin+tonicMinorEvidence,root:r,mode:'minor'});
+  candidates.push({score:pMin*.82+cadenceMin*.42+tonicMinorEvidence*.70,root:r,mode:'minor'});
  }
  candidates.sort((a,b)=>b.score-a.score);
  let best=candidates[0];
@@ -334,7 +335,7 @@ $('analyzeBtn').onclick=async()=>{
  try{
   const data=monoBuffer(state.audioBuffer),sr=state.audioBuffer.sampleRate,meter=+$('meter').value||4,duration=state.audioBuffer.duration;const timing=estimateTempoAndStart(data,sr,meter);if(token!==state.analysisToken||fileToken!==state.fileToken)return;$('bpm').value=timing.bpm;$('barStart').value=timing.start.toFixed(2);const spb=secondsPerBar(),bars=Math.max(1,Math.ceil(Math.max(0,duration-timing.start)/spb));$('barCount').value=bars;
   const segments=[],barMap=[],setting=$('chordsPerBar').value;for(let b=0;b<bars;b++){const s=timing.start+b*spb,e=Math.min(duration,s+spb);if(setting==='1'){segments.push(segmentFeature(data,sr,s,e));barMap.push([segments.length-1])}else{const mid=(s+e)/2;segments.push(segmentFeature(data,sr,s,mid));const a=segments.length-1;segments.push(segmentFeature(data,sr,mid,e));barMap.push([a,a+1])}if(b%3===0){if(token!==state.analysisToken||fileToken!==state.fileToken)return;$('analysisStatus').innerHTML=`<span class="spinner"></span>${b+1}/${bars}小節を音響解析中…`;await new Promise(r=>setTimeout(r,0))}}
-  const key=estimateKey(segments);state.originalKeyRoot=key.root;state.originalMode=key.mode;state.preferFlats=[1,3,6,8,10].includes(key.root);let decoded=decodeChords(segments,key,$('analysisMode').value);decoded=applyConservativeMaj7(decoded,segments,key,$('analysisMode').value);const chords=[],conf=[];
+  let key=estimateKey(segments);const manualRoot=$('manualKeyRoot').value;if(manualRoot!=='')key={root:+manualRoot,mode:$('manualMode').value,score:key.score};state.originalKeyRoot=key.root;state.originalMode=key.mode;state.preferFlats=[1,3,6,8,10].includes(key.root);let decoded=decodeChords(segments,key,$('analysisMode').value);decoded=applyConservativeMaj7(decoded,segments,key,$('analysisMode').value);const chords=[],conf=[];
   for(const ids of barMap){const allowBass=$('analysisMode').value==='extended';const a=formatState(decoded[ids[0]],segments[ids[0]],allowBass);if(ids.length===1){chords.push(a);conf.push(decoded[ids[0]].conf);continue}const b=formatState(decoded[ids[1]],segments[ids[1]],allowBass),ca=decoded[ids[0]].conf,cb=decoded[ids[1]].conf;if($('chordsPerBar').value==='2'){chords.push(a+' / '+b)}else if(sameCore(a,b)||Math.min(ca,cb)<.48){chords.push(ca>=cb?a:b)}else{chords.push(a+' / '+b)}conf.push((ca+cb)/2)}
   if(token!==state.analysisToken||fileToken!==state.fileToken)return;state.chords=chords;state.confidence=conf;state.currentBar=calcBar(audio.currentTime);followCurrent();updateKeys();renderChart();updateNow();$('analysisStatus').textContent=`解析完了：キー ${keyName(state.originalKeyRoot,state.originalMode)}／BPM ${$('bpm').value}／${bars}小節`;
  }catch(err){console.error(err);if(token===state.analysisToken&&fileToken===state.fileToken)$('analysisStatus').textContent='解析中にエラーが発生しました。音源を選び直して再度実行してください。'}finally{if(token===state.analysisToken&&fileToken===state.fileToken){state.isAnalyzing=false;$('analyzeBtn').disabled=state.audioBuffer===null}}
@@ -343,6 +344,13 @@ $('analyzeBtn').onclick=async()=>{
 const STORE='ai-guitar-chord-analyzer-library-v2';function library(){try{return JSON.parse(localStorage.getItem(STORE)||'{}')}catch(_){return {}}}function saveLibrary(x){localStorage.setItem(STORE,JSON.stringify(x))}
 function renderLibrary(){const l=library(),arr=Object.values(l).sort((a,b)=>(b.updated||0)-(a.updated||0));$('savedCount').value=`${arr.length}曲`;$('songLibrary').innerHTML='';if(!arr.length){$('songLibrary').innerHTML='<div class="empty">保存されたコード表はありません。</div>';return}for(const d of arr){const item=document.createElement('div');item.className='song-item';const info=document.createElement('div');info.innerHTML=`<b>${escapeHtml(d.name)}</b><div class="song-meta">${escapeHtml(d.key||'—')}／BPM ${d.bpm}／${d.chords.length}小節</div>`;const row=document.createElement('div');row.className='row';const open=document.createElement('button');open.className='btn';open.textContent='コード表を開く';open.onclick=()=>{cancelAnalysis();audio.pause();audio.currentTime=0;$('seek').value=0;$('timeDisplay').textContent='00:00.00';state.originalKeyRoot=d.keyRoot;state.originalMode=d.mode||'major';state.preferFlats=!!d.preferFlats;$('songTitle').value=d.title||d.name;$('saveName').value=d.name;$('bpm').value=d.bpm;$('meter').value=d.meter;$('barStart').value=d.barStart;$('displayOffset').value=d.offset||0;state.chords=[...d.chords];state.confidence=[...(d.confidence||[])];$('barCount').value=state.chords.length;state.currentBar=1;state.windowStart=1;updateKeys();renderChart();updateNow();$('analysisStatus').textContent='保存したコード表を開きました。対応する音源は必要な時に再選択してください。'};const del=document.createElement('button');del.className='btn danger';del.textContent='削除';del.onclick=()=>{const x=library();delete x[d.name];saveLibrary(x);renderLibrary()};row.append(open,del);item.append(info,row);$('songLibrary').appendChild(item)}}
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+$('applyManualKey').onclick=()=>{
+ const v=$('manualKeyRoot').value;if(v==='')return alert('キーのルート音を選択してください。');
+ state.originalKeyRoot=+v;state.originalMode=$('manualMode').value;state.preferFlats=[1,3,6,8,10].includes(state.originalKeyRoot);updateKeys();
+ if(state.audioBuffer){$('analysisStatus').textContent=`キーを ${keyName(state.originalKeyRoot,state.originalMode)} に修正しました。コード進行を再解析します…`;analyze();}
+ else {$('analysisStatus').textContent=`キーを ${keyName(state.originalKeyRoot,state.originalMode)} に修正しました。`;}
+};
 $('saveSong').onclick=()=>{const name=($('saveName').value||$('songTitle').value).trim();if(!name)return alert('保存名を入力してください。');const x=library();x[name]={name,title:$('songTitle').value,keyRoot:state.originalKeyRoot,mode:state.originalMode,preferFlats:state.preferFlats,key:$('originalKey').value,bpm:+$('bpm').value,meter:+$('meter').value,barStart:+$('barStart').value,offset:+$('displayOffset').value,chords:[...state.chords],confidence:[...state.confidence],updated:Date.now()};saveLibrary(x);renderLibrary();alert('コード表を保存しました。音源ファイルは保存されません。')};
 function buildPrint(){const total=state.chords.length,rows=Math.ceil(total/8),scale=Math.min(1,7.4/Math.max(1,rows));$('printTitle').textContent=$('songTitle').value||'コード箱譜';$('printMeta').textContent=`キー ${$('originalKey').value||'—'}　BPM ${$('bpm').value}　全${total}小節`;$('printGrid').style.transform=`scale(${scale})`;$('printGrid').style.width=`${100/scale}%`;$('printGrid').innerHTML='';for(let i=0;i<total;i++){const b=document.createElement('div');b.className='print-bar';b.innerHTML=`<div class="print-bar-number">${i+1}小節</div><div class="print-bar-code">${escapeHtml(displayedChord(i))}</div><div class="print-bar-conf">${state.confidence[i]?`信頼度 ${Math.round(state.confidence[i]*100)}%`:''}</div>`;$('printGrid').appendChild(b)}}
 // Guitar Analyzer本体へのコード進行受け渡し
